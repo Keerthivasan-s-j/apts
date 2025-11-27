@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TPO — Placement Dashboard</title>
+  {% load static %}
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* --- (same styling as mentor dashboard, condensed) --- */
+    :root {
+      --primary: #3f37c9;
+      --secondary: #4361ee;
+      --card-bg: #fff;
+      --muted: #6b7280;
+    }
+    body { background:#f5f7fb; font-family:'Segoe UI',sans-serif; color:#111827; }
+    .dashboard-header { background: linear-gradient(135deg,var(--secondary),var(--primary)); color:#fff; padding:1.4rem 0; border-radius:0 0 12px 12px; position:sticky; top:0; z-index:999; box-shadow:0 6px 18px rgba(15,23,42,0.12); }
+    .card { border-radius:12px; box-shadow:0 6px 16px rgba(2,6,23,0.06); border:none; }
+    .stat-card { text-align:center; padding:1.6rem; }
+    .stat-icon { width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:1.4rem }
+    .avatar-circle { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#eef2ff; }
+    .filter-box { background:var(--card-bg); padding:1.2rem; border-radius:12px; margin-bottom:1.25rem; }
+    .table thead { background:#eef2ff; font-weight:700; color:#374151; }
+    .status-badge { padding:6px 10px; border-radius:10px; font-weight:700; font-size:0.82rem; }
+    .status-placed { background:#d1e7dd;color:#0f5132; }
+    .status-in-progress { background:#fff3cd;color:#664d03; }
+    .status-not-placed { background:#f8d7da;color:#842029; }
+    .dark-mode { background:#0b1220; color:#e5eef8; }
+    .dark-mode .card { background: #071224; box-shadow: 0 6px 16px rgba(0,0,0,0.6); }
+    .dark-mode .table thead { background:#071a2b; color:#cfe9ff; }
+  </style>
+</head>
+<body>
+
+<header class="dashboard-header">
+  <div class="container-fluid d-flex justify-content-between align-items-center px-4">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-building-check fs-3 me-3"></i>
+      <div>
+        <h4 class="mb-0 fw-semibold">TPO Placement Dashboard</h4>
+        <small class="text-light">Complete placement monitoring</small>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      <a href="{% url 'tpo_dashboard' %}" class="btn btn-outline-light btn-sm"><i class="bi bi-house-door"></i> Dashboard</a>
+      <a href="{% url 'logout' %}" class="btn btn-light btn-sm text-danger fw-bold"><i class="bi bi-box-arrow-right"></i> Logout</a>
+      <div class="user-avatar rounded-circle bg-white text-primary fw-bold d-flex justify-content-center align-items-center" style="width:42px;height:42px;">{{ request.user.first_name|slice:":1"|upper }}</div>
+    </div>
+  </div>
+</header>
+
+<div class="container mt-4">
+
+  <!-- STAT CARDS -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-primary text-white"><i class="bi bi-people"></i></div>
+        <div class="h4 mb-1">{{ total_students }}</div>
+        <div class="text-muted small">Total Students</div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-success text-white"><i class="bi bi-person-check-fill"></i></div>
+        <div class="h4 mb-1">{{ placed }}</div>
+        <div class="text-muted small">Placed</div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-warning text-white"><i class="bi bi-hourglass-split"></i></div>
+        <div class="h4 mb-1">{{ in_progress }}</div>
+        <div class="text-muted small">In Progress</div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-info text-white"><i class="bi bi-trophy"></i></div>
+        <div class="h4 mb-1">{{ highest_package }} LPA</div>
+        <div class="text-muted small">Highest Package</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER / SEARCH / SORT / EXPORT -->
+  <div class="filter-box mb-4">
+    <form method="GET" class="row g-2 align-items-end">
+
+      <div class="col-md-4">
+        <label class="form-label small">Search</label>
+        <input type="text" name="q" value="{{ current_filters.q }}" class="form-control" placeholder="Search student, company, role..." />
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label small">Status</label>
+        <select name="status" class="form-select">
+          <option value="all" {% if current_filters.status == 'all' %}selected{% endif %}>All</option>
+          <option value="Accepted" {% if current_filters.status == 'Accepted' %}selected{% endif %}>Accepted</option>
+          <option value="Pending" {% if current_filters.status == 'Pending' %}selected{% endif %}>Pending</option>
+          <option value="Rejected" {% if current_filters.status == 'Rejected' %}selected{% endif %}>Rejected</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label small">Branch</label>
+        <select name="branch" class="form-select">
+          <option value="all">All</option>
+          {% for b in branches %}
+            <option value="{{ b }}" {% if current_filters.branch == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label small">Sort</label>
+        <select name="sort" class="form-select">
+          <option value="-date" {% if current_filters.sort == '' or current_filters.sort == '-date' %}selected{% endif %}>Newest</option>
+          <option value="date_asc" {% if current_filters.sort == 'date_asc' %}selected{% endif %}>Oldest</option>
+          <option value="package_desc" {% if current_filters.sort == 'package_desc' %}selected{% endif %}>Package: High → Low</option>
+          <option value="package_asc" {% if current_filters.sort == 'package_asc' %}selected{% endif %}>Package: Low → High</option>
+          <option value="company_asc" {% if current_filters.sort == 'company_asc' %}selected{% endif %}>Company A→Z</option>
+        </select>
+      </div>
+
+      <div class="col-md-2 d-grid">
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+
+      <div class="col-12 d-flex gap-2 mt-2">
+        <a href="{% url 'tpo_placements' %}" class="btn btn-outline-secondary">Clear Filters</a>
+
+        <!-- Export CSV keeps current querystring so export is filtered -->
+        <a href="{% url 'export_placements_csv' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
+          <i class="bi bi-download"></i> Export CSV
+        </a>
+
+        <button style="display: none;" id="toggle-dark" type="button" class="btn btn-outline-dark ms-auto">
+          <i class="bi bi-moon"></i> Dark
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Main table + charts -->
+  <div class="row">
+    <div class="col-lg-8 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Placement Records ({{ raw_placements_count }})</h6>
+          <small class="text-muted">Page {{ page_obj.number }} of {{ paginator.num_pages }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Branch</th>
+                <th>Company</th>
+                <th>Role</th>
+                <th>Package</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in placements %}
+              <tr>
+                <td>
+                  <a href="{% url 'std_dashboard' p.student.id %}" class="text-decoration-none text-dark d-flex align-items-center">
+                    <div class="avatar-circle me-2"><i class="bi bi-person"></i></div>
+                    <div><strong>{{ p.student.name }}</strong><div class="text-muted small">{{ p.student.email }}</div></div>
+                  </a>
+                </td>
+                <td>{{ p.student.branch }}</td>
+                <td>{{ p.company }}</td>
+                <td>{{ p.position }}</td>
+                <td>{{ p.package }} {{ p.package_unit }} <small class="text-muted">({{ p.package_lpa|floatformat:2 }} LPA)</small></td>
+                <td>
+                  {% if p.status == "Accepted" %}
+                    <span class="status-badge status-placed">Accepted</span>
+                  {% elif p.status == "Pending" %}
+                    <span class="status-badge status-in-progress">Pending</span>
+                  {% else %}
+                    <span class="status-badge status-not-placed">Rejected</span>
+                  {% endif %}
+                </td>
+                <td>{{ p.created_at|date:"d M Y" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="card-footer">
+          <nav aria-label="Page navigation">
+            <ul class="pagination mb-0">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page=1&{{ request.GET.urlencode|safe }}" aria-label="First">&laquo;</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|safe }}" aria-label="Previous">Prev</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                <li class="page-item disabled"><span class="page-link">Prev</span></li>
+              {% endif %}
+
+              <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|safe }}" aria-label="Next">Next</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ paginator.num_pages }}&{{ request.GET.urlencode|safe }}" aria-label="Last">&raquo;</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts column -->
+    <div class="col-lg-4">
+      <div class="card mb-3 p-3">
+        <h6 class="mb-2">Top Companies</h6>
+        <canvas id="topCompaniesChart" height="220"></canvas>
+      </div>
+
+      <div class="card p-3">
+        <h6 class="mb-2">Package Distribution (LPA)</h6>
+        <canvas id="packageChart" height="220"></canvas>
+      </div>
+    </div>
+
+  </div>
+  <!-- ===================== TPO AI ANALYSIS PANEL ===================== -->
+  
+  <div class="card mt-4 p-3">
+      <h5 class="mb-3">
+          <i class="bi bi-stars text-primary"></i> TPO AI Analytics Assistant
+      </h5>
+  
+      <!-- AI Output box -->
+      <div id="ai_output" style="
+          height: 260px;
+          overflow-y: auto;
+          background:#f8f9fa;
+          border:1px solid #ddd;
+          border-radius:8px;
+          padding:15px;
+          margin-bottom:12px;
+          font-size:15px;
+          line-height:1.5;
+      ">
+          <span class="text-muted">AI insights will appear here…</span>
+      </div>
+  
+      <!-- AI Input -->
+      <textarea id="ai_prompt" class="form-control" rows="3"
+          placeholder="Ask anything about placements, student performance, mentor load, top companies, CGPA trends..."
+          style="border-radius:8px;"></textarea>
+  
+      <button onclick="sendAIQuery()" class="btn btn-primary mt-2">
+          <i class="bi bi-send"></i> Ask AI
+      </button>
+  </div>
+</div>
+
+
+<script>
+function sendAIQuery() {
+    const promptBox = document.getElementById("ai_prompt");
+    const outputBox = document.getElementById("ai_output");
+
+    const prompt = promptBox.value.trim();
+    if (!prompt) return;
+
+    outputBox.innerHTML += `<p><b>You:</b> ${prompt}</p>`;
+    promptBox.value = "";
+
+    fetch("{% url 'tpo_ai_query' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({ prompt: prompt })
+    })
+    .then(res => res.json())
+    .then(data => {
+        outputBox.innerHTML += `<div><b>AI:</b><br>${data.reply}</div>`;
+        outputBox.scrollTop = outputBox.scrollHeight;
+    })
+    .catch(() => {
+        outputBox.innerHTML += `<p class="text-danger">Error contacting AI server</p>`;
+    });
+}
+</script>
+
+
+<footer class="text-center mt-4 mb-4 text-muted">© 2025 Placement Cell</footer>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Preserve GET params helper — returns current querystring without 'page' so we can append page properly
+  function getQuery(removeKeys=[]) {
+    const params = new URLSearchParams(window.location.search);
+    removeKeys.forEach(k => params.delete(k));
+    return params.toString();
+  }
+
+  // Dark mode toggle (persisted)
+  const body = document.body;
+  const DARK_KEY = "tpo_dark_mode";
+  const btn = document.getElementById("toggle-dark");
+  function applyDarkMode(enabled) {
+    if (enabled) {
+      document.documentElement.classList.add("dark-mode");
+      body.classList.add("dark-mode");
+      btn.innerHTML = '<i class="bi bi-sun"></i> Light';
+    } else {
+      document.documentElement.classList.remove("dark-mode");
+      body.classList.remove("dark-mode");
+      btn.innerHTML = '<i class="bi bi-moon"></i> Dark';
+    }
+  }
+  // init
+  const saved = localStorage.getItem(DARK_KEY) === "1";
+  applyDarkMode(saved);
+  btn.addEventListener("click", () => {
+    const now = !document.documentElement.classList.contains("dark-mode");
+    localStorage.setItem(DARK_KEY, now ? "1" : "0");
+    applyDarkMode(now);
+  });
+
+  // Charts: use data from context variables passed as JSON strings
+  const topCompanies = {{ top_companies_json|safe }};
+  const buckets = {{ buckets_json|safe }};
+
+  // Top Companies Chart
+  const compLabels = topCompanies.map(x => x.company);
+  const compData = topCompanies.map(x => x.count);
+  const ctxC = document.getElementById('topCompaniesChart').getContext('2d');
+  new Chart(ctxC, {
+    type: 'bar',
+    data: {
+      labels: compLabels,
+      datasets: [{
+        label: 'Offers',
+        data: compData,
+        borderRadius: 6,
+        barThickness: 28,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false }},
+      scales: {
+        y: { beginAtZero: true, ticks: { precision:0 } }
+      }
+    }
+  });
+
+  // Package distribution
+  const pkgLabels = Object.keys(buckets);
+  const pkgData = Object.values(buckets);
+  const ctxP = document.getElementById('packageChart').getContext('2d');
+  new Chart(ctxP, {
+    type: 'doughnut',
+    data: {
+      labels: pkgLabels,
+      datasets: [{ data: pkgData }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+
+  // Ensure pagination links keep other query params (we used request.GET.urlencode in template, so ok)
+</script>
+
+</body>
+</html>

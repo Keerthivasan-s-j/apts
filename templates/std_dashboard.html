@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student Dashboard</title>
+  {% load static %}
+
+  <!-- Bootstrap & icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root{
+      --primary:#4361ee;
+      --secondary:#3f37c9;
+      --muted:#6b7280;
+      --surface:#f5f7fb;
+      --card-bg:#fff;
+    }
+    body { background:var(--surface); font-family:"Segoe UI",sans-serif; color:#111827; }
+    .dashboard-header { background: linear-gradient(135deg,var(--primary),var(--secondary)); color:#fff; padding:1.25rem 0; border-radius:0 0 12px 12px; position:sticky; top:0; z-index:999; box-shadow:0 6px 18px rgba(15,23,42,0.12); }
+    .card { border-radius:12px; border:none; box-shadow:0 6px 18px rgba(2,6,23,0.06); }
+    .stat-card { padding:1.1rem; text-align:center; }
+    .stat-icon { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; font-size:1.4rem; }
+    .semester-card { background:var(--card-bg); border-radius:10px; padding:0.85rem; margin-bottom:0.75rem; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .semester-title { font-weight:700; color:#374151; }
+    .gpa-display { font-weight:700; font-size:1.1rem; }
+    .placement-card { border-radius:10px; padding:0.9rem; border:1px solid rgba(2,6,23,0.04); margin-bottom:0.75rem; }
+    .placement-badge { padding:6px 10px; border-radius:10px; font-weight:700; font-size:0.82rem; display:inline-block; }
+    .placement-status-accepted { background:#d1e7dd;color:#0f5132; }
+    .placement-status-pending { background:#fff3cd;color:#664d03; }
+    .placement-status-rejected { background:#f8d7da;color:#842029; }
+    .small-muted { color:var(--muted); font-size:0.9rem; }
+    #ai-corner { position:fixed; right:18px; bottom:18px; z-index:1050; }
+    #ai-box { width:360px; max-width:calc(100vw - 32px); display:none; }
+    .btn-pill { border-radius:999px; }
+    .chart-card {
+        height: 340px;        /* same height */
+        display: flex;
+        flex-direction: column;
+    }
+    .chart-card canvas {
+        height: 100% !important;
+    }
+
+    @media (max-width:768px) { .dashboard-header .container-fluid { flex-direction:column; gap:12px; } #ai-box { width:95vw; right:10px; } }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="dashboard-header">
+  <div class="container-fluid d-flex justify-content-between align-items-center px-4">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-mortarboard-fill fs-3 text-white me-3"></i>
+      <div>
+        <h1 class="h5 fw-semibold text-white mb-0">Student Dashboard</h1>
+        <p class="text-light mb-0 small">Track academics and placements</p>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      <a href="{% url 'home' %}" class="btn btn-outline-light btn-sm d-flex align-items-center gap-1">
+        <i class="bi bi-house-door-fill"></i> Home
+      </a>
+
+      <a href="{% url 'logout' %}" class="btn btn-light btn-sm text-danger fw-semibold d-flex align-items-center gap-1">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </a>
+
+      <div class="vr" style="width:1px;height:36px;background:rgba(255,255,255,0.12)"></div>
+
+      <div class="d-flex align-items-center">
+        <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width:42px;height:42px;font-weight:700;">
+          {{ student.user.first_name|default:student.name|slice:":1"|upper|default:"A" }}
+        </div>
+        <div class="ms-2 text-end">
+          <div class="text-white fw-semibold">{{ student.user.get_full_name|default:student.name }}</div>
+          <small class="text-light opacity-75">{{ student.branch }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="container mt-4 mb-5">
+  <!-- Stats row -->
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="card stat-card h-100">
+        <div class="stat-icon bg-primary text-white"><i class="bi bi-mortarboard"></i></div>
+        <div class="stat-value h4 mb-0">{{ student.cgpa }}</div>
+        <div class="stat-label small-muted">Current CGPA</div>
+        <div class="small-muted mt-1">Semesters: {{ student.current_semester }}</div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card stat-card h-100">
+        <div class="stat-icon bg-success text-white"><i class="bi bi-briefcase-fill"></i></div>
+        <div class="stat-value h4 mb-0">{{ accepted_count }}</div>
+        <div class="stat-label small-muted">Accepted Offers</div>
+        <div class="small-muted mt-1">{{ pending_count }} pending • {{ rejected_count }} rejected</div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card stat-card h-100">
+        <div class="stat-icon bg-info text-white"><i class="bi bi-award"></i></div>
+        {% if student.top_offer %}
+          <div class="h5 mb-0">{{ student.top_offer.company }}</div>
+          <div class="small-muted">Top Offer — {{ student.top_offer.position }}</div>
+          <div class="small-muted mt-1">{{ student.top_offer.package|floatformat:2 }} {{ student.top_offer.package_unit }}</div>
+        {% else %}
+          <div class="h5 mb-0">—</div>
+          <div class="small-muted">Top Offer</div>
+          <div class="small-muted mt-1">No accepted offers</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="row g-4">
+    <!-- LEFT: Academic + charts -->
+    <div class="col-lg-8">
+      <!-- ACADEMIC CARD -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Academic Records</h5>
+
+          {% comment %} Permission: student himself OR tpo OR mentor of this student {% endcomment %}
+          {% if request.user == student.user or request.user.profile.user_type == "tpo" or student.mentor == request.user.mentor_profile %}
+            <button id="editAcademicBtn" class="btn btn-sm btn-primary btn-pill">
+              <i class="bi bi-pencil-square me-1"></i> Edit Academic
+            </button>
+          {% endif %}
+        </div>
+
+        <div class="card-body">
+          <form id="academicForm" method="POST" action="{% url 'update_cgpa' student.id %}">
+            {% csrf_token %}
+
+            <!-- CURRENT SEMESTER -->
+            <div class="d-flex align-items-center mb-3 gap-3">
+              <div><i class="bi bi-calendar-week fs-2 text-primary"></i></div>
+              <div>
+                <div class="small-muted">Current Semester (you are studying now)</div>
+
+                <!-- view -->
+                <div id="currentSemView" class="h5 fw-semibold">{{ current_sem }}</div>
+
+                <!-- edit -->
+                <select id="currentSemInput" name="current_sem" class="form-select d-none" style="width:140px;">
+                  <option value="1" {% if student.current_semester == 1 %}selected{% endif %}>Sem 1</option>
+                  <option value="2" {% if student.current_semester == 2 %}selected{% endif %}>Sem 2</option>
+                  <option value="3" {% if student.current_semester == 3 %}selected{% endif %}>Sem 3</option>
+                  <option value="4" {% if student.current_semester == 4 %}selected{% endif %}>Sem 4</option>
+                  <option value="5" {% if student.current_semester == 5 %}selected{% endif %}>Sem 5</option>
+                  <option value="6" {% if student.current_semester == 6 %}selected{% endif %}>Sem 6</option>
+                  <option value="7" {% if student.current_semester == 7 %}selected{% endif %}>Sem 7</option>
+                  <option value="8" {% if student.current_semester == 8 %}selected{% endif %}>Sem 8</option>
+                </select>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- CGPA display (auto-calculated) -->
+            <div class="d-flex align-items-center mb-4 gap-3">
+              <div><i class="bi bi-bar-chart-line fs-2 text-primary"></i></div>
+              <div>
+                <div class="small-muted">Cumulative GPA (auto-calculated up to current semester)</div>
+                <div id="cgpaView" class="h4 fw-bold">{{ student.cgpa }}</div>
+                <input id="cgpaInput" class="form-control d-none" readonly style="width:120px;font-weight:bold;" value="{{ student.cgpa }}">
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Semesters -->
+            <h6 class="mb-3">Semester-wise GPA</h6>
+            <div class="row">
+              {% for sem in semesters %}
+                <div class="col-sm-6 col-md-4">
+                  <div class="semester-card" id="semester-card-{{ sem.semester_number }}">
+                    <div>
+                      <div class="semester-title">Sem {{ sem.semester_number }}</div>
+                      <div id="gpaView{{ sem.semester_number }}" class="gpa-display">{{ sem.gpa }}</div>
+
+                      <input
+                        id="gpaInput{{ sem.semester_number }}"
+                        type="number"
+                        step="0.01"
+                        name="gpa[]"
+                        value="{{ sem.gpa }}"
+                        class="form-control form-control-sm d-none mt-2"
+                        style="width:110px;"
+                        oninput="recalculateCGPA()"
+                      >
+                      <input type="hidden" name="semester_number[]" value="{{ sem.semester_number }}">
+                    </div>
+
+                    <!-- small hint for current semester -->
+                    <div class="text-end small-muted" style="min-width:80px;">
+                      {% if sem.semester_number == student.current_semester %}
+                        <span class="badge bg-primary text-white">Current</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Save / Cancel -->
+            <div id="academicButtons" class="d-none mt-3">
+              <button type="submit" class="btn btn-success me-2">
+                <i class="bi bi-check-circle me-1"></i> Save
+              </button>
+              <button type="button" class="btn btn-secondary" id="cancelAcademicBtn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card p-3 chart-card">
+            <h6 class="mb-2">Semester GPA Trend</h6>
+            <canvas id="gpaTrendChart" height="200"></canvas>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card p-3 chart-card">
+            <h6 class="mb-2">Placement Status</h6>
+            <canvas id="placementStatusChart" height="200"></canvas>
+          </div>
+        </div>
+
+        <div class="col-12 mt-2">
+          <div class="card p-3">
+            <h6 class="mb-2">Offer Packages</h6>
+            <canvas id="packageChart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: placements -->
+    <div class="col-lg-4">
+      {% if request.user == student.user %}
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Add Placement</h5>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#addPlacementForm">+ Add</button>
+        </div>
+
+        <div id="addPlacementForm" class="collapse">
+          <div class="card-body">
+            <form method="POST" action="{% url 'add_placement' student.id %}">
+              {% csrf_token %}
+              <div class="mb-2"><input class="form-control form-control-sm" name="company" placeholder="Company" required></div>
+              <div class="mb-2"><input class="form-control form-control-sm" name="package" type="number" step="0.01" placeholder="Package (numeric)" required></div>
+              <input type="hidden" name="package_unit" value="LPA">
+              <div class="mb-2"><input class="form-control form-control-sm" name="position" placeholder="Position" required></div>
+              <div class="mb-2">
+                <select class="form-select form-select-sm" name="status" required>
+                  <option>Pending</option>
+                  <option>Accepted</option>
+                  <option>Rejected</option>
+                </select>
+              </div>
+              <button class="btn btn-success w-100 btn-sm">Save</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Placement Offers</h5>
+          {% if not request.user == student.user %}<span class="small-muted">Read only</span>{% endif %}
+        </div>
+
+        <div class="card-body">
+          {% if placements %}
+            {% for place in placements %}
+              <div class="placement-card" id="place-{{ place.id }}">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1">{{ place.company }}</h6>
+                    <div class="small-muted">{{ place.position }}</div>
+                    <div class="mt-2">
+                      <span class="placement-badge placement-status-{{ place.status|lower }}">{{ place.status }}</span>
+                      <span class="ms-2 small-muted">{{ place.package }} {{ place.package_unit }}</span>
+                    </div>
+                  </div>
+
+                  {% if request.user == student.user %}
+                    <div class="text-end">
+                      <button class="btn btn-sm btn-outline-primary mb-1" onclick="toggleEditPlacement({{ place.id }})"><i class="bi bi-pencil"></i></button>
+                      <a href="{% url 'delete_placement' place.id %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                    </div>
+                  {% endif %}
+                </div>
+
+                {% if request.user == student.user %}
+                <form method="POST" action="{% url 'edit_placement' place.id %}" id="edit-form-{{ place.id }}" class="mt-3 d-none">
+                  {% csrf_token %}
+                  <div class="mb-2"><input class="form-control form-control-sm" name="company" value="{{ place.company }}"></div>
+                  <div class="mb-2"><input class="form-control form-control-sm" name="package" value="{{ place.package }}" type="number"></div>
+                  <div class="mb-2"><input class="form-control form-control-sm" name="position" value="{{ place.position }}"></div>
+                  <div class="mb-2">
+                    <select class="form-select form-select-sm" name="status">
+                      <option value="Pending" {% if place.status == "Pending" %}selected{% endif %}>Pending</option>
+                      <option value="Accepted" {% if place.status == "Accepted" %}selected{% endif %}>Accepted</option>
+                      <option value="Rejected" {% if place.status == "Rejected" %}selected{% endif %}>Rejected</option>
+                    </select>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-success" type="submit">Save</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleEditPlacement({{ place.id }})">Cancel</button>
+                  </div>
+                </form>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-4">
+              <i class="bi bi-briefcase fs-2 mb-2"></i>
+              <div>No offers yet</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ===================== STUDENT AI ASSISTANT ===================== -->
+  <div class="card mt-4 p-3">
+      <h5 class="mb-3">
+          <i class="bi bi-robot text-primary"></i> AI Guidance Assistant
+      </h5>
+  
+      <!-- AI Output -->
+      <div id="std_ai_output" style="
+          height: 230px;
+          overflow-y: auto;
+          background:#f8f9fa;
+          border:1px solid #ddd;
+          border-radius:8px;
+          padding:15px;
+          margin-bottom:12px;
+          font-size:15px;
+          line-height:1.5;
+      ">
+          <span class="text-muted">AI tips will appear here…</span>
+      </div>
+  
+      <!-- Input -->
+      <textarea id="std_ai_prompt" class="form-control" rows="3"
+                placeholder="Ask anything about improving CGPA, placements, interview tips, career roadmap..."
+                style="border-radius:8px;"></textarea>
+  
+      <button onclick="sendStudentAI()" class="btn btn-primary mt-2">
+          <i class="bi bi-send"></i> Ask AI
+      </button>
+  </div>
+</div>
+
+<script>
+function sendStudentAI() {
+    const input = document.getElementById("std_ai_prompt");
+    const output = document.getElementById("std_ai_output");
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    output.innerHTML += `<p><b>You:</b> ${text}</p>`;
+    input.value = "";
+
+    fetch("{% url 'student_ai_query' student.id %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({ prompt: text })
+    })
+        .then(res => res.json())
+        .then(data => {
+            output.innerHTML += `<div><b>AI:</b><br>${data.reply}</div>`;
+            output.scrollTop = output.scrollHeight;
+        })
+        .catch(() => {
+            output.innerHTML += `<p class='text-danger'>Error contacting AI server.</p>`;
+        });
+}
+</script>
+
+
+<!-- AI corner (expanded) -->
+<div id="ai-corner" style="display: none;">
+  <div id="ai-box" class="card shadow-lg">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <div><i class="bi bi-lightning-charge me-1"></i> AI Assistant</div>
+      <div>
+        <button id="ai-minimize" class="btn btn-sm btn-light text-primary"><i class="bi bi-dash-lg"></i></button>
+      </div>
+    </div>
+
+    <div class="card-body chat-body" style="max-height:360px; overflow:auto;">
+      <div id="ai-messages" class="small-muted">
+        <div class="mb-2">🤖 Hi {{ student.user.first_name|default:"there" }} — ask about CGPA, placements, or interview tips.</div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="input-group">
+        <input id="ai-input" class="form-control form-control-sm" placeholder="Ask the assistant..." />
+        <button id="ai-send" class="btn btn-primary btn-sm"><i class="bi bi-send"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <button id="ai-toggle" class="btn btn-primary rounded-circle" title="Open AI Assistant" style="width:56px;height:56px;">
+    <i class="bi bi-robot fs-4 text-white"></i>
+  </button>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // ---------- Academic Edit (single edit -> all semesters) ----------
+  const editAcademicBtn = document.getElementById('editAcademicBtn');
+  const currentSemView = document.getElementById('currentSemView');
+  const currentSemInput = document.getElementById('currentSemInput');
+  const cgpaView = document.getElementById('cgpaView');
+  const cgpaInput = document.getElementById('cgpaInput');
+  const academicButtons = document.getElementById('academicButtons');
+  const cancelAcademicBtn = document.getElementById('cancelAcademicBtn');
+
+  if (editAcademicBtn) {
+    editAcademicBtn.addEventListener('click', () => {
+      // show inputs
+      currentSemView.classList.add('d-none');
+      currentSemInput.classList.remove('d-none');
+
+      cgpaView.classList.add('d-none');
+      cgpaInput.classList.remove('d-none');
+
+      academicButtons.classList.remove('d-none');
+      editAcademicBtn.classList.add('d-none');
+
+      // show all semester inputs
+      {% for sem in semesters %}
+        document.getElementById('gpaView{{ sem.semester_number }}').classList.add('d-none');
+        document.getElementById('gpaInput{{ sem.semester_number }}').classList.remove('d-none');
+      {% endfor %}
+    });
+  }
+
+  if (cancelAcademicBtn) {
+    cancelAcademicBtn.addEventListener('click', () => {
+      // simple cancel - reload to discard changes
+      location.reload();
+    });
+  }
+
+  // Recalculate CGPA live based on current semester value and visible inputs
+  function recalculateCGPA() {
+    const currentSem = Number(currentSemInput.value) || {{ student.current_semester|default:1 }};
+    let total = 0;
+    let count = 0;
+
+    const cutoffSem = currentSem - 1;  // NEW — use up to previous semester only
+
+    {% for sem in semesters %}
+        const semNum{{ sem.semester_number }} = {{ sem.semester_number }};
+        let valEl{{ sem.semester_number }} = document.getElementById('gpaInput{{ sem.semester_number }}');
+        let val{{ sem.semester_number }} = valEl{{ sem.semester_number }} ? Number(valEl{{ sem.semester_number }}.value) : null;
+
+        if (val{{ sem.semester_number }} !== null && !isNaN(val{{ sem.semester_number }}) && semNum{{ sem.semester_number }} <= cutoffSem) {
+            total += val{{ sem.semester_number }};
+            count += 1;
+        }
+    {% endfor %}
+
+    if (count > 0) {
+        cgpaInput.value = (total / count).toFixed(2);
+    } else {
+        cgpaInput.value = "0.00";
+    }
+     
+  }
+
+
+  // Ensure recalc runs when currentSemInput change (after we show it)
+  if (currentSemInput) {
+    currentSemInput.addEventListener('change', recalculateCGPA);
+  }
+
+  // ---------- Placement edit toggle ----------
+  function toggleEditPlacement(id) {
+    const form = document.getElementById('edit-form-' + id);
+    if (!form) return;
+    form.classList.toggle('d-none');
+  }
+
+  // ---------- AI corner ----------
+  const aiBox = document.getElementById('ai-box');
+  const aiToggle = document.getElementById('ai-toggle');
+  const aiMinimize = document.getElementById('ai-minimize');
+  const aiSend = document.getElementById('ai-send');
+  const aiInput = document.getElementById('ai-input');
+  const aiMessages = document.getElementById('ai-messages');
+
+  aiToggle.addEventListener('click', () => { aiBox.style.display = 'block'; aiToggle.style.display = 'none'; });
+  aiMinimize.addEventListener('click', () => { aiBox.style.display = 'none'; aiToggle.style.display = 'block'; });
+
+  aiSend && aiSend.addEventListener('click', sendAI);
+  aiInput && aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendAI(); });
+
+  function sendAI() {
+    const text = (aiInput.value || '').trim();
+    if (!text) return;
+    aiMessages.innerHTML += `<div class="text-end mb-2"><span class="badge bg-secondary">${escapeHtml(text)}</span></div>`;
+    aiInput.value = '';
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+
+    setTimeout(() => {
+      const reply = getAIResponse(text.toLowerCase());
+      aiMessages.innerHTML += `<div class="text-start mt-1"><span class="badge bg-light text-dark border">${escapeHtml(reply)}</span></div>`;
+      aiMessages.scrollTop = aiMessages.scrollHeight;
+    }, 350);
+  }
+
+  function getAIResponse(q) {
+    if (q.includes('placement') || q.includes('job')) return '💼 Apply often — build small projects and internships first.';
+    if (q.includes('cgpa') || q.includes('gpa')) return '📚 Focus on fundamentals and practice previous papers.';
+    if (q.includes('resume')) return '🧾 Keep it one page, list projects and measurable results.';
+    if (q.includes('interview')) return '💬 Practice explaining projects and problem solving steps.';
+    return '🤖 Try asking about placements, CGPA, resumes, or interview tips.';
+  }
+
+  function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+  // ---------- Charts setup ----------
+  document.addEventListener('DOMContentLoaded', function(){
+    const semLabels = [{% for sem in semesters %}"Sem {{ sem.semester_number }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+    const semGpas = [{% for sem in semesters %}{{ sem.gpa|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+    const accepted = {{ accepted_count|default:0 }};
+    const pending = {{ pending_count|default:0 }};
+    const rejected = {{ rejected_count|default:0 }};
+
+    const offerLabels = [{% for p in placements %}"{{ p.company|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+    const offerValues = [{% for p in placements %}{% if p.package_unit == 'K' %}{{ p.package|floatformat:2 }} / 100.0{% else %}{{ p.package|floatformat:2 }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+    // GPA trend
+    const ctxG = document.getElementById('gpaTrendChart')?.getContext('2d');
+    if (ctxG) new Chart(ctxG, {
+      type: 'line',
+      data: { labels: semLabels, datasets:[{ label:'GPA', data: semGpas, tension:0.3, pointRadius:6, borderWidth:2 }]},
+      options: { plugins:{ legend:{ display:false }}, scales:{ y:{ beginAtZero:true, suggestedMax:10 } } }
+    });
+
+    // placement status
+    const ctxP = document.getElementById('placementStatusChart')?.getContext('2d');
+    if (ctxP) new Chart(ctxP, {
+      type: 'doughnut',
+      data: { labels:['Accepted','Pending','Rejected'], datasets:[{ data:[accepted,pending,rejected] }]},
+      options:{ plugins:{ legend:{ position:'bottom' } } }
+    });
+
+    // package graph
+    const rawOfferValues = offerValues.map(v => { try { return Number(eval(v)); } catch(e){ return 0; }});
+    const ctxB = document.getElementById('packageChart')?.getContext('2d');
+    if (ctxB) new Chart(ctxB, {
+      type: 'bar',
+      data: { labels: offerLabels, datasets:[{ label:'Package (LPA)', data: rawOfferValues, borderRadius:6, barThickness:18 }]},
+      options: { plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+    });
+  });
+</script>
+</body>
+</html>

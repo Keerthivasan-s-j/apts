@@ -1,0 +1,467 @@
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --accent-color: #4cc9f0;
+    --light-bg: #f8f9fa;
+    --dark-text: #212529;
+    --light-text: #f8f9fa;
+    --success-color: #4ade80;
+    --warning-color: #facc15;
+    --danger-color: #f87171;
+}
+
+body {
+    background-color: #f0f2f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--dark-text);
+    padding-bottom: 2rem;
+}
+
+.dashboard-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 1.5rem 0;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.card {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 1rem 1.5rem;
+}
+
+.stat-card {
+    border-left: 4px solid var(--primary-color);
+}
+
+.stat-card.placement {
+    border-left-color: var(--success-color);
+}
+
+.stat-card.company {
+    border-left-color: var(--accent-color);
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.edit-btn, .placement-edit-btn {
+    background-color: var(--secondary-color);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: var(--light-text);
+    transition: all 0.3s ease;
+}
+
+.placement-edit-btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.edit-btn:hover, .placement-edit-btn:hover {
+    background-color: var(--primary-color);
+    /* transform: translateY(-1px); */
+}
+
+.save-btn {
+    background-color: var(--success-color);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: white;
+}
+
+.cancel-btn {
+    background-color: #e9ecef;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.add-btn {
+    background-color: var(--accent-color);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: white;
+}
+
+.delete-btn {
+    background-color: var(--danger-color);
+    border: none;
+    border-radius: 8px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    color: white;
+}
+
+.semester-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.semester-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.semester-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.gpa-display {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-text);
+}
+
+.gpa-input {
+    width: 80px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.3rem;
+}
+
+/* .gpa-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+} */
+
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.section-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(67, 97, 238, 0.2);
+}
+
+.form-control {
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+}
+
+.btn-group-custom {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.placement-card {
+    border-left: 4px solid var(--success-color);
+    transition: all 0.3s ease;
+}
+
+.placement-column-card {
+    min-height: 500px;
+    height: auto;
+}
+
+#addPlacementForm {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+
+/* .placement-card:hover {
+    border-left-width: 6px;
+} */
+
+.placement-badge {
+    color: white;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.placement-status-accepted {
+    background-color: var(--success-color);
+}
+
+.placement-status-pending {
+    background-color: var(--warning-color);
+}
+
+.placement-status-rejected {
+    background-color: var(--danger-color);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+}
+
+/* ---------- HEADER STYLING ---------- */
+.dashboard-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: linear-gradient(90deg, #0066ff, #6f42c1);
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Buttons */
+.dashboard-header .btn {
+  border-radius: 25px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.dashboard-header .btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.dashboard-header .btn-light:hover {
+  background-color: #fff;
+  color: #dc3545;
+  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.3);
+}
+
+/* Avatar */
+.user-avatar {
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+/* Divider between user and buttons */
+.vr {
+  height: 32px;
+  width: 1px;
+}
+
+/* Make it blend on scroll */
+body {
+  scroll-behavior: smooth;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-header .container-fluid {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .dashboard-header .btn {
+    width: 100%;
+  }
+
+  .vr {
+    display: none;
+  }
+}
+
+/* ---------- AI Corner Styling (Updated with Text Wrapping) ---------- */
+#ai-corner {
+     position: fixed;
+     bottom: 25px;
+     right: 25px;
+     z-index: 1050;
+}
+
+/* Chat Box (visible by default) */
+#ai-box {
+     width: 360px;
+     border-radius: 15px;
+     overflow: hidden;
+     display: block;
+     animation: fadeInUp 0.3s ease;
+     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+/* Hidden when minimized */
+#ai-box:not(.show) {
+     display: none;
+}
+
+/* Floating toggle (robot button) */
+#ai-toggle {
+     width: 60px;
+     height: 60px;
+     border-radius: 50%;
+     background: linear-gradient(135deg, #007bff, #6610f2);
+     border: none;
+     transition: all 0.2s ease;
+}
+
+#ai-toggle:hover {
+     transform: scale(1.05);
+     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Card Header */
+#ai-box .card-header {
+     font-weight: 600;
+     border-bottom: none;
+}
+
+#ai-box .chat-body {
+     background-color: #f8f9fa;
+     padding: 10px 15px;
+     max-height: none;
+     overflow: hidden;
+}
+
+/* Make only the message container scrollable */
+#ai-messages {
+     max-height: 400px;
+     overflow-y: auto;
+     padding-right: 5px; /* avoids scrollbar overlapping text */
+}
+
+
+/* Message Bubbles */
+#ai-messages div {
+     display: flex;
+     flex-wrap: wrap;
+     margin-bottom: 8px;
+}
+
+/* Ensure badges wrap and don’t overflow */
+#ai-messages .badge {
+     white-space: pre-wrap !important;
+     word-wrap: break-word !important;
+     overflow-wrap: break-word !important;
+     text-align: left;
+     line-height: 1.4;
+     max-width: 90%;
+     font-size: 0.9rem;
+     padding: 8px 12px;
+     border-radius: 10px;
+}
+
+/* User messages */
+#ai-messages .text-end .badge {
+     background-color: #0d6efd;
+     color: white;
+     align-self: flex-end;
+}
+
+/* AI messages */
+#ai-messages .text-start .badge {
+     background-color: #ffffff;
+     border: 1px solid #dee2e6;
+     color: #333;
+}
+
+/* Footer Input */
+#ai-box .card-footer {
+     border-top: 1px solid #dee2e6;
+     padding: 10px 15px;
+     background: #f9f9f9;
+}
+
+#ai-input {
+     border-radius: 8px;
+}
+
+#ai-send {
+     border-radius: 8px;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+     from {
+          transform: translateY(20px);
+          opacity: 0;
+     }
+     to {
+          transform: translateY(0);
+          opacity: 1;
+     }
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+     #ai-box {
+          width: 90%;
+          right: 5%;
+     }
+}
+
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        border-radius: 0 0 10px 10px;
+    }
+    
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .semester-card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group-custom {
+        flex-direction: column;
+    }
+}

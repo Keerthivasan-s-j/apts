@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Sign Up</h2>
+    <form method="POST" class="mt-4">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="username">Username:</label>
+            <input type="text" name="username" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="password">Password:</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="first_name">First Name:</label>
+            <input type="text" name="first_name" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="last_name">Last Name:</label>
+            <input type="text" name="last_name" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="email">Email:</label>
+            <input type="email" name="email" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="phone">Phone:</label>
+            <input type="text" name="phone" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label for="user_type">User Type:</label>
+            <select name="user_type" id="user_type" class="form-select" required onchange="toggleFields()">
+                <option value="">-- Select Type --</option>
+                <option value="student">Student</option>
+                <option value="mentor">Mentor</option>
+            </select>
+        </div>
+
+        <!-- For Students -->
+        <div id="student_fields" style="display: none;">
+            <div class="mb-3">
+                <label for="branch">Branch:</label>
+                <input type="text" name="branch" class="form-control">
+            </div>
+        </div>
+
+        <!-- For Mentors -->
+        <div id="mentor_fields" style="display: none;">
+            <div class="mb-3">
+                <label for="department">Department:</label>
+                <input type="text" name="department" class="form-control" value="Computer Science">
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+        </div>
+
+        <div class="mt-3 text-center">
+            <a href="{% url 'login' %}">Already have an account? Login here</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleFields() {
+    var userType = document.getElementById("user_type").value;
+    document.getElementById("student_fields").style.display = (userType === "student") ? "block" : "none";
+    document.getElementById("mentor_fields").style.display = (userType === "mentor") ? "block" : "none";
+}
+</script>
+{% endblock %}

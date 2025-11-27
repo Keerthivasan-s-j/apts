@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mentor Dashboard</title>
+  {% load static %}
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root { --primary:#3f37c9; --secondary:#4361ee; }
+    body { background:#f5f7fb; font-family:'Segoe UI',sans-serif; color:#111827; }
+    .dashboard-header { background: linear-gradient(135deg,var(--secondary),var(--primary)); color:#fff; padding:1.2rem 0; border-radius:0 0 12px 12px; position:sticky; top:0; z-index:999; }
+    .card { border-radius:12px; border:none; box-shadow:0 6px 16px rgba(2,6,23,0.06); }
+    .stat-card { text-align:center; padding:1.3rem; }
+    .stat-icon { width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:1.4rem; }
+    .filter-box { background:#fff; padding:1rem; border-radius:12px; margin-bottom:1.25rem; }
+    .avatar-circle { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#eef2ff; }
+    .status-badge { padding:6px 10px; border-radius:10px; font-weight:700; font-size:0.82rem; }
+    .status-placed { background:#d1e7dd;color:#0f5132; }
+    .status-in-progress { background:#fff3cd;color:#664d03; }
+    .status-not-placed { background:#f8d7da;color:#842029; }
+    .dark-mode { background:#0b1220; color:#e5eef8; }
+    .dark-mode .card { background:#071224; box-shadow: 0 6px 16px rgba(0,0,0,0.6); }
+    .dark-mode .table thead { background:#071a2b; color:#cfe9ff; }
+    .status-badge {
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-placed {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.status-in-progress {
+    background: #fff3cd;
+    color: #664d03;
+}
+
+.status-not-placed {
+    background: #f8d7da;
+    color: #842029;
+}
+
+
+  </style>
+</head>
+<body>
+
+<header class="dashboard-header">
+  <div class="container-fluid d-flex justify-content-between align-items-center px-4">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-mortarboard-fill fs-3 me-3"></i>
+      <div>
+        <h4 class="mb-0 fw-semibold">Mentor Dashboard</h4>
+        <small class="text-light">Manage your student cohort</small>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      <a href="{% url 'home' %}" class="btn btn-outline-light btn-sm"><i class="bi bi-house-door"></i> Home</a>
+      <a href="{% url 'logout' %}" class="btn btn-light btn-sm text-danger fw-bold"><i class="bi bi-box-arrow-right"></i> Logout</a>
+      <div class="user-avatar rounded-circle bg-white text-primary fw-bold d-flex justify-content-center align-items-center" style="width:42px;height:42px;">{{ request.user.first_name|slice:":1"|upper }}</div>
+    </div>
+  </div>
+</header>
+
+<div class="container mt-4">
+
+  <!-- Stats -->
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-primary text-white"><i class="bi bi-people"></i></div>
+        <div class="h4 mb-1">{{ total_students }}</div>
+        <div class="text-muted small">Total Students</div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-success text-white"><i class="bi bi-briefcase"></i></div>
+        <div class="h4 mb-1">{{ placed_count }}</div>
+        <div class="text-muted small">Placed Students</div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card stat-card">
+        <div class="stat-icon bg-info text-white"><i class="bi bi-graph-up"></i></div>
+        <div class="h4 mb-1">{{ avg_gpa }}</div>
+        <div class="text-muted small">Avg GPA</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters/Search/Export -->
+  <div class="filter-box mb-4">
+    <form method="GET" class="row g-2 align-items-end">
+
+      <div class="col-md-4">
+        <label class="form-label small">Search</label>
+        <input type="text" name="q" value="{{ current_filters.q }}" class="form-control" placeholder="Search student name or email..." />
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label small">Status</label>
+        <select name="status" class="form-select">
+          <option value="all" {% if current_filters.status == 'all' %}selected{% endif %}>All</option>
+          <option value="placed" {% if current_filters.status == 'placed' %}selected{% endif %}>Placed</option>
+          <option value="in-progress" {% if current_filters.status == 'in-progress' %}selected{% endif %}>In Progress</option>
+          <option value="not-placed" {% if current_filters.status == 'not-placed' %}selected{% endif %}>Not Placed</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label small">GPA</label>
+        <select name="gpa" class="form-select">
+          <option value="all" {% if current_filters.gpa == 'all' %}selected{% endif %}>All</option>
+          <option value="high" {% if current_filters.gpa == 'high' %}selected{% endif %}>High (8.5+)</option>
+          <option value="medium" {% if current_filters.gpa == 'medium' %}selected{% endif %}>Medium (7.5-8.4)</option>
+          <option value="low" {% if current_filters.gpa == 'low' %}selected{% endif %}>Low (&lt;7.5)</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label small">Sort</label>
+        <select name="sort" class="form-select">
+          <option value="name_asc" {% if current_filters.sort == 'name_asc' %}selected{% endif %}>Name A→Z</option>
+          <option value="cgpa_desc" {% if current_filters.sort == 'cgpa_desc' %}selected{% endif %}>CGPA High→Low</option>
+          <option value="cgpa_asc" {% if current_filters.sort == 'cgpa_asc' %}selected{% endif %}>CGPA Low→High</option>
+          <option value="package_desc" {% if current_filters.sort == 'package_desc' %}selected{% endif %}>Top Package High→Low</option>
+        </select>
+      </div>
+
+      <div class="col-md-2 d-grid">
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+
+      <div class="col-12 d-flex gap-2 mt-2">
+        <a href="{% url 'mentor_dashboard' %}" class="btn btn-outline-secondary">Clear Filters</a>
+        <a href="{% url 'mentor_export_csv' %}?{{ query_string }}" class="btn btn-outline-success"><i class="bi bi-download"></i> Export CSV</a>
+        <button style="display: none;" id="toggle-dark" type="button" class="btn btn-outline-dark ms-auto"><i class="bi bi-moon"></i> Dark</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Main content: table + charts -->
+  <div class="row">
+    <div class="col-lg-8 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Students ({{ paginator.count }})</h6>
+          <small class="text-muted">Page {{ students_page.number }} of {{ paginator.num_pages }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>GPA</th>
+                <th>Attendance</th>
+                <th>Credits</th>
+                <th>Top Offer</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for st in students_page %}
+              <tr>
+                <td>
+                  <a href="{% url 'std_dashboard' st.obj.id %}" class="text-decoration-none text-dark d-flex align-items-center">
+                    <div class="avatar-circle me-2"><i class="bi bi-person"></i></div>
+                    <div>
+                      <strong>{{ st.name }}</strong>
+                      <div class="text-muted small">{{ st.email }}</div>
+                    </div>
+                  </a>
+                </td>
+
+                <td>
+                  <span class="{% if st.cgpa >= 8.5 %}badge bg-success{% elif st.cgpa >= 7.5 %}badge bg-warning text-dark{% else %}badge bg-danger{% endif %}">
+                    {{ st.cgpa }}
+                  </span>
+                </td>
+
+                <td>{{ st.attendance }}%</td>
+                <td>{{ st.credits }}</td>
+
+                <td>
+                  {% if st.top_offer %}
+                    {{ st.top_offer.company }} — {{ st.top_offer.position }}
+                    <div class="text-muted small">{{ st.top_offer.package }} {{ st.top_offer.package_unit }} ({{ st.top_offer.package_lpa|floatformat:2 }} LPA)</div>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if st.has_accepted %}
+                    <span class="status-badge status-placed">Placed</span>
+                  {% elif st.has_any %}
+                    <span class="status-badge status-in-progress">In Progress</span>
+                  {% else %}
+                    <span class="status-badge status-not-placed">Not Placed</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'std_dashboard' st.obj.id %}">View</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-footer">
+          <nav>
+            <ul class="pagination mb-0">
+              {% if students_page.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1&{{ query_string }}">«</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ students_page.previous_page_number }}&{{ query_string }}">Prev</a></li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">«</span></li>
+                <li class="page-item disabled"><span class="page-link">Prev</span></li>
+              {% endif %}
+
+              <li class="page-item active"><span class="page-link">{{ students_page.number }}</span></li>
+
+              {% if students_page.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ students_page.next_page_number }}&{{ query_string }}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ paginator.num_pages }}&{{ query_string }}">»</a></li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+                <li class="page-item disabled"><span class="page-link">»</span></li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: charts -->
+    <div class="col-lg-4">
+      <div class="card mb-3 p-3">
+        <h6 class="mb-2">Top Students (by Package)</h6>
+        <canvas id="topStudentsChart" height="200"></canvas>
+      </div>
+
+      <div class="card p-3">
+        <h6 class="mb-2">CGPA Distribution</h6>
+        <canvas id="gpaChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="text-center mt-4 mb-4 text-muted">© 2025 Mentor Dashboard</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Dark mode toggle
+  const DARK_KEY = "mentor_dark_mode";
+  const btn = document.getElementById("toggle-dark");
+  const body = document.body;
+  function applyDark(enabled){
+    if(enabled){ document.documentElement.classList.add('dark-mode'); body.classList.add('dark-mode'); btn.innerHTML = '<i class="bi bi-sun"></i> Light'; }
+    else { document.documentElement.classList.remove('dark-mode'); body.classList.remove('dark-mode'); btn.innerHTML = '<i class="bi bi-moon"></i> Dark'; }
+  }
+  const saved = localStorage.getItem(DARK_KEY) === "1";
+  applyDark(saved);
+  btn.addEventListener('click', () => {
+    const now = !document.documentElement.classList.contains('dark-mode');
+    localStorage.setItem(DARK_KEY, now ? "1" : "0");
+    applyDark(now);
+  });
+
+  // Charts (data from context)
+  const topStudents = {{ top_students_json|safe }};
+  const buckets = {{ buckets_json|safe }};
+
+  // Top Students (bar)
+  const labelsS = topStudents.map(s=>s.name);
+  const dataS = topStudents.map(s=>s.package);
+  new Chart(document.getElementById('topStudentsChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: labelsS, datasets:[{ label:'Package (LPA)', data:dataS, borderRadius:6, barThickness:24 }]},
+    options:{ plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  // CGPA distribution (doughnut)
+  const labelsG = Object.keys(buckets);
+  const dataG = Object.values(buckets);
+  new Chart(document.getElementById('gpaChart').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels: labelsG, datasets:[{ data: dataG }]},
+    options:{ plugins:{ legend:{ position:'bottom' } } }
+  });
+</script>
+
+</body>
+</html>

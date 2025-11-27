@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {% load static %}
+    <title>TPO Dashboard</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #3f37c9;
+            --secondary: #4361ee;
+        }
+        body { background: #f5f7fb; font-family: 'Segoe UI'; }
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white;
+            padding: 1.2rem 0;
+            border-radius: 0 0 12px 12px;
+        }
+        .card { border-radius: 12px; border: none; box-shadow: 0 6px 14px rgba(0,0,0,0.07); }
+        .table thead { background: #eef2ff; }
+        .badge-status { padding: 6px 10px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="dashboard-header mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+
+        <div class="d-flex align-items-center">
+            <i class="bi bi-building-check fs-3 me-3"></i>
+            <div>
+                <h4 class="mb-0 fw-semibold">TPO Dashboard</h4>
+                <small>Administer mentors & placements</small>
+            </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-center">
+
+            <!-- Go to placements page -->
+            <a href="{% url 'tpo_placements' %}" class="btn btn-warning btn-sm">
+                <i class="bi bi-clipboard-check me-1"></i> Manage Placements
+            </a>
+
+            <a href="{% url 'home' %}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-house-door"></i>
+            </a>
+
+            <a href="{% url 'logout' %}" class="btn btn-light btn-sm text-danger fw-semibold">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </div>
+    </div>
+</header>
+
+
+
+<div class="container">
+
+    <!-- MAIN CARD -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Assign or Change Mentors</h5>
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Current Mentor</th>
+                            <th>Assign / Change Mentor</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td><strong>{{ s.name }}</strong><br><small class="text-muted">{{ s.branch }}</small></td>
+
+                            <td>
+                                {% if s.mentor %}
+                                    <span class="badge bg-success">{{ s.mentor.name }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Not Assigned</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <form class="d-flex gap-2" method="POST" action="{% url 'assign_mentor' %}">
+                                    {% csrf_token %}
+
+                                    <input type="hidden" name="student_id" value="{{ s.id }}">
+
+                                    <select name="mentor_id" class="form-select form-select-sm" required>
+                                        <option value="none">-- Remove Mentor --</option>
+                                        {% for m in mentors %}
+                                            <option value="{{ m.id }}"
+                                                {% if s.mentor and s.mentor.id == m.id %}selected{% endif %}>
+                                                {{ m.name }} ({{ m.department }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+
+                                    <button class="btn btn-primary btn-sm" type="submit">
+                                        Update
+                                    </button>
+                                </form>
+                            </td>
+
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- BULK ASSIGN -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Bulk Assign Mentor</h5>
+        </div>
+
+        <div class="card-body">
+
+            <form method="POST" action="{% url 'bulk_assign_mentor' %}">
+                {% csrf_token %}
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Select Mentor</label>
+                        <select name="mentor_id" class="form-select" required>
+                            {% for m in mentors %}
+                                <option value="{{ m.id }}">{{ m.name }} ({{ m.department }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">
+                            Assign to Selected
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Select</th>
+                                <th>Name</th>
+                                <th>Branch</th>
+                                <th>Current Mentor</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for s in students %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="students[]" value="{{ s.id }}">
+                                </td>
+                                <td>{{ s.name }}</td>
+                                <td>{{ s.branch }}</td>
+                                <td>
+                                    {% if s.mentor %}
+                                        <span class="badge bg-primary">{{ s.mentor.name }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">None</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
